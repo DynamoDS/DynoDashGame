@@ -14,10 +14,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+          # NOTE: "cache: npm" is intentionally omitted.
+          # Restoring a stale npm cache can cause platform-specific optional
+          # dependencies (e.g. @rollup/rollup-linux-x64-gnu) to be skipped
+          # during `npm ci`, leading to a Vitest startup error.
+          # See: https://github.com/npm/cli/issues/4828
 
       - name: Install dependencies
         run: npm ci
+
+      # Defensive guard: if the Rollup Linux native binary is still missing
+      # after `npm ci` (known npm optional-dep bug), wipe node_modules and
+      # reinstall from scratch so the next steps don't fail.
+      - name: Verify Rollup native module (clean reinstall if missing)
+        run: |
+          node -e "require('@rollup/rollup-linux-x64-gnu')" 2>/dev/null || \
+            (echo "::warning::@rollup/rollup-linux-x64-gnu missing – performing clean reinstall" && \
+             rm -rf node_modules && npm ci)
 
       - name: Run unit tests
         run: npm test
