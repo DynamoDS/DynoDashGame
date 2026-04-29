@@ -130,6 +130,7 @@ export class GameScene extends Phaser.Scene {
       this.player.sprite,
       this.coins,
       (_player, coin) => {
+        if (this.introPhase !== 'done') return;
         const c = coin as Phaser.Physics.Arcade.Sprite;
         const cx = c.x;
         const cy = c.y;
