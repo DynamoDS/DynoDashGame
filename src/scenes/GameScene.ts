@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { PLAYER_FUEL_MAX, PLAYER_JUMP_VELOCITY, WIRE_SPEED, WIRE_GRAVITY, WIRE_BREAK_MS } from "../config/GameConfig";
+import { PLAYER_FUEL_MAX, PLAYER_JUMP_VELOCITY, WIRE_SPEED, WIRE_GRAVITY, WIRE_BREAK_MS, INTRO_PAN_OUT_MS, INTRO_PAUSE_MS, INTRO_RETURN_MS, INTRO_ZOOM_OUT } from "../config/GameConfig";
 import { REG_DYN_EDGES, REG_DYN_NODES, REG_FUEL, REG_HEALTH, REG_HIGH_SCORE, REG_LEVEL, REG_LIVES, REG_SCORE } from "../config/registryKeys";
 import { Player } from "../entities/Player";
 import { parseLevelGraph } from "../level-graph/graph";
@@ -28,6 +28,10 @@ export class GameScene extends Phaser.Scene {
   private deathElapsedMs = 0;
   private spawnX = 0;
   private spawnY = 0;
+  private introPhase: 'pan-out' | 'pause' | 'pan-back' | 'done' = 'done';
+  private introElapsed = 0;
+  private goalX = 0;
+  private goalY = 0;
   /** Cooldown after a Jacobot body-bump so one touch doesn't re-trigger every frame. */
   private jacobotBumpCooldownMs = 0;
   score = 0;
@@ -73,6 +77,17 @@ export class GameScene extends Phaser.Scene {
     this.connectors = built.connectors;
     this.jacobot = built.jacobot ?? null;
     this.triviaSystem = new TriviaSystem(this, this.player);
+
+    this.goalX = built.flag.x;
+    this.goalY = built.flag.y;
+    this.introPhase = 'pan-out';
+    this.introElapsed = 0;
+    this.player.arcadeBody.setAllowGravity(false);
+    this.player.arcadeBody.setVelocity(0, 0);
+    const cam = this.cameras.main;
+    cam.centerOn(this.spawnX, this.spawnY);
+    cam.pan(this.goalX, this.goalY, INTRO_PAN_OUT_MS, 'Sine.easeInOut');
+    cam.zoomTo(INTRO_ZOOM_OUT, INTRO_PAN_OUT_MS, 'Sine.easeInOut');
 
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.spaceKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
@@ -175,12 +190,33 @@ export class GameScene extends Phaser.Scene {
   update(): void {
     if (this.transitioning) return;
 
+    const delta = this.game.loop.delta;
+
+    if (this.introPhase !== 'done') {
+      this.introElapsed += delta;
+      if (this.introPhase === 'pan-out' && this.introElapsed >= INTRO_PAN_OUT_MS) {
+        this.introPhase = 'pause';
+      } else if (this.introPhase === 'pause' && this.introElapsed >= INTRO_PAN_OUT_MS + INTRO_PAUSE_MS) {
+        this.introPhase = 'pan-back';
+        this.cameras.main.pan(this.spawnX, this.spawnY, INTRO_RETURN_MS, 'Sine.easeInOut');
+        this.cameras.main.zoomTo(1, INTRO_RETURN_MS, 'Sine.easeInOut');
+      } else if (
+        this.introPhase === 'pan-back' &&
+        this.introElapsed >= INTRO_PAN_OUT_MS + INTRO_PAUSE_MS + INTRO_RETURN_MS
+      ) {
+        this.introPhase = 'done';
+        this.player.arcadeBody.setAllowGravity(true);
+        this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
+      }
+      return;
+    }
+
     // Poll for player death directly — avoids Phaser event/timer chains that
     // can silently stall on levels with many concurrent tweens or physics groups.
     // Accumulate elapsed time once the player dies; trigger the scene transition
     // after the visual fade completes (~600 ms: 200 ms delay + 400 ms duration).
     if (this.player.dead) {
-      this.deathElapsedMs += this.game.loop.delta;
+      this.deathElapsedMs += delta;
       if (this.deathElapsedMs >= 600) {
         this.handleDeath();
       }
@@ -190,8 +226,6 @@ export class GameScene extends Phaser.Scene {
 
     this.player.update();
     this.jacobot?.update();
-
-    const delta = this.game.loop.delta;
 
     // ── Jacobot body-bump — touching the boss teleports the player back to start ─
     if (this.jacobot) {

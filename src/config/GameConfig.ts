@@ -79,6 +79,16 @@ export const WIRE_CURVE_SEGMENTS = 24;
 /** Duration (ms) of the red flash before a broken wire disappears. */
 export const WIRE_BREAK_FLASH_MS = 180;
 
+// ── Level intro camera pan ─────────────────────────────────────────────────────
+/** Duration of the outward pan from spawn to goal flag (ms). */
+export const INTRO_PAN_OUT_MS = 2000;
+/** Pause at goal flag before panning back (ms). */
+export const INTRO_PAUSE_MS = 500;
+/** Duration of the return pan from goal flag back to player (ms). */
+export const INTRO_RETURN_MS = 1000;
+/** Camera zoom level during overview (1 = normal; smaller = more world visible). */
+export const INTRO_ZOOM_OUT = 0.2;
+
 /** Max fuel (matches UI bar denominator). */
 export const PLAYER_FUEL_MAX = 72;
 /** Upward velocity while holding Shift with fuel (Arcade Y is down-positive). */
