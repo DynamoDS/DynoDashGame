@@ -82,8 +82,7 @@ export class GameScene extends Phaser.Scene {
     this.goalY = built.flag.y;
     this.introPhase = 'pan-out';
     this.introElapsed = 0;
-    this.player.arcadeBody.setAllowGravity(false);
-    this.player.arcadeBody.setVelocity(0, 0);
+    this.player.freeze();
     const cam = this.cameras.main;
     cam.centerOn(this.spawnX, this.spawnY);
     cam.pan(this.goalX, this.goalY, INTRO_PAN_OUT_MS, 'Sine.easeInOut');
