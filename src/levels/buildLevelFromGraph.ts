@@ -633,7 +633,6 @@ export function buildLevelFromGraph(
   }
 
   scene.cameras.main.setBounds(0, WORLD_TOP_Y, worldWidth, physicsHeight);
-  scene.cameras.main.startFollow(player.sprite, true, 0.1, 0.1);
 
   return { worldWidth, player, spawnX, spawnY, coins: collectibles, fireGround, safeGround, connectors, flag, movingPlatforms, jacobot };
 }
