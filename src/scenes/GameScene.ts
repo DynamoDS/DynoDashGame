@@ -28,7 +28,7 @@ export class GameScene extends Phaser.Scene {
   private deathElapsedMs = 0;
   private spawnX = 0;
   private spawnY = 0;
-  private introPhase: 'pan-out' | 'pause' | 'pan-back' | 'done' = 'done';
+  private introPhase: "pan-out" | "pause" | "pan-back" | "done" = "done";
   private introElapsed = 0;
   private goalX = 0;
   private goalY = 0;
