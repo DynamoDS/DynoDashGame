@@ -80,13 +80,13 @@ export class GameScene extends Phaser.Scene {
 
     this.goalX = built.flag.x;
     this.goalY = built.flag.y;
-    this.introPhase = 'pan-out';
+    this.introPhase = "pan-out";
     this.introElapsed = 0;
     this.player.freeze();
     const cam = this.cameras.main;
     cam.centerOn(this.spawnX, this.spawnY);
-    cam.pan(this.goalX, this.goalY, INTRO_PAN_OUT_MS, 'Sine.easeInOut');
-    cam.zoomTo(INTRO_ZOOM_OUT, INTRO_PAN_OUT_MS, 'Sine.easeInOut');
+    cam.pan(this.goalX, this.goalY, INTRO_PAN_OUT_MS, "Sine.easeInOut");
+    cam.zoomTo(INTRO_ZOOM_OUT, INTRO_PAN_OUT_MS, "Sine.easeInOut");
 
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.spaceKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
@@ -113,7 +113,7 @@ export class GameScene extends Phaser.Scene {
         this.player.sprite,
         this.jacobot.bugs,
         (_player, bug) => {
-          if (this.transitioning) return;
+          if (this.transitioning || this.introPhase !== "done") return;
           (bug as Phaser.Physics.Arcade.Sprite).destroy();
           this.player.takeDamage(this.jacobot?.bugDamage ?? 25);
         },
@@ -129,7 +129,7 @@ export class GameScene extends Phaser.Scene {
       this.player.sprite,
       this.coins,
       (_player, coin) => {
-        if (this.introPhase !== 'done') return;
+        if (this.introPhase !== "done") return;
         const c = coin as Phaser.Physics.Arcade.Sprite;
         const cx = c.x;
         const cy = c.y;
@@ -192,29 +192,8 @@ export class GameScene extends Phaser.Scene {
 
     const delta = this.game.loop.delta;
 
-    if (this.introPhase !== 'done') {
-      this.introElapsed += delta;
-      if (this.introPhase === 'pan-out' && this.introElapsed >= INTRO_PAN_OUT_MS) {
-        this.introPhase = 'pause';
-      } else if (this.introPhase === 'pause' && this.introElapsed >= INTRO_PAN_OUT_MS + INTRO_PAUSE_MS) {
-        this.introPhase = 'pan-back';
-        this.cameras.main.pan(this.spawnX, this.spawnY, INTRO_RETURN_MS, 'Sine.easeInOut');
-        this.cameras.main.zoomTo(1, INTRO_RETURN_MS, 'Sine.easeInOut');
-      } else if (
-        this.introPhase === 'pan-back' &&
-        this.introElapsed >= INTRO_PAN_OUT_MS + INTRO_PAUSE_MS + INTRO_RETURN_MS
-      ) {
-        this.introPhase = 'done';
-        this.player.arcadeBody.setAllowGravity(true);
-        this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
-      }
-      return;
-    }
-
-    // Poll for player death directly — avoids Phaser event/timer chains that
-    // can silently stall on levels with many concurrent tweens or physics groups.
-    // Accumulate elapsed time once the player dies; trigger the scene transition
-    // after the visual fade completes (~600 ms: 200 ms delay + 400 ms duration).
+    // Poll for player death before the intro early-return so that a death
+    // triggered during the intro (e.g. fire ground) is still handled correctly.
     if (this.player.dead) {
       this.deathElapsedMs += delta;
       if (this.deathElapsedMs >= 600) {
@@ -223,6 +202,25 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.deathElapsedMs = 0;
+
+    if (this.introPhase !== "done") {
+      this.introElapsed += delta;
+      if (this.introPhase === "pan-out" && this.introElapsed >= INTRO_PAN_OUT_MS) {
+        this.introPhase = "pause";
+      } else if (this.introPhase === "pause" && this.introElapsed >= INTRO_PAN_OUT_MS + INTRO_PAUSE_MS) {
+        this.introPhase = "pan-back";
+        this.cameras.main.pan(this.spawnX, this.spawnY, INTRO_RETURN_MS, "Sine.easeInOut");
+        this.cameras.main.zoomTo(1, INTRO_RETURN_MS, "Sine.easeInOut");
+      } else if (
+        this.introPhase === "pan-back" &&
+        this.introElapsed >= INTRO_PAN_OUT_MS + INTRO_PAUSE_MS + INTRO_RETURN_MS
+      ) {
+        this.introPhase = "done";
+        this.player.unfreeze();
+        this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
+      }
+      return;
+    }
 
     this.player.update();
     this.jacobot?.update();
